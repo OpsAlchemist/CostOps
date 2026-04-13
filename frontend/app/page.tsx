@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import CostForm from './components/CostForm'
+import CostForm from './components/CostForm.tsx'  
 
 export default function Home() {
   const [result, setResult] = useState(null)
