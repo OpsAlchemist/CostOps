@@ -27,8 +27,8 @@ export default function CostForm({ onEstimateComplete }: CostFormProps) {
 
       if (!res.ok) throw new Error(`Server error: ${res.status}`)
       
-      const data = await res.json()
-      setResult(data)
+      const data = await res.json() as ApiResponse
+      setResult(data);
       onEstimateComplete?.(data) // Pass data to parent if callback exists
     } catch (err) {
       console.error(err)

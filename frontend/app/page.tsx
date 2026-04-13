@@ -1,9 +1,18 @@
+interface ApiResponse {
+  costs: {
+    aws: number;
+    azure: number;
+    gcp: number;
+  };
+  recommendation: string;
+}
+
 'use client'
 import { useState } from 'react'
 import CostForm from './components/CostForm.tsx'  
 
 export default function Home() {
-  const [result, setResult] = useState(null)
+  const [result, setResult] = useState<ApiResponse | null>(null)
 
   const handleSubmit = async (e: any) => {
     e.preventDefault()
