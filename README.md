@@ -1,6 +1,6 @@
 # CostOps
  
-# Multi-Cloud Cost Estimator (Mini) - CloudOps
+# Multi-Cloud Cost Estimator (Mini) - CostOps
 
 ## Overview
 

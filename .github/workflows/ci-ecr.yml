@@ -1,0 +1,88 @@
+name: CI/CD - Docker Build & Push
+on:
+  push:
+    branches: ["**"]   # every branch
+  pull_request:
+    branches: ["**"]
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+  BACKEND_REPO: costops-backend
+  FRONTEND_REPO: costops-frontend
+jobs:
+  # ==========================================
+  # 🧪 CI JOB (Runs on ALL branches)
+  # ==========================================
+  build-test:
+    name: Build & Validate Images
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      # Optional but recommended
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      # 🔹 Build backend image (no push)
+      - name: Build Backend (Test)
+        run: |
+          docker build -t backend-test ./backend
+      # 🔹 Build frontend image (no push)
+      - name: Build Frontend (Test)
+        run: |
+          docker build -t frontend-test ./frontend
+      # 🔹 Optional: Run container smoke test
+      - name: Run Backend Container (Smoke Test)
+        run: |
+          docker run -d -p 8000:8000 backend-test
+          sleep 5
+          curl -f http://localhost:8000/docs || exit 1
+  # ==========================================
+  # 🚀 CD JOB (Only on MAIN)
+  # ==========================================
+  push-to-ecr:
+    name: Push Images to ECR
+    runs-on: ubuntu-latest
+    needs: build-test
+    if: github.ref == 'refs/heads/main'   # only main branch
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      # 🔐 Configure AWS
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      # 🔑 Login to ECR
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+      # 🏷️ Tag
+      - name: Set image tag
+        run: echo "IMAGE_TAG=${GITHUB_SHA}" >> $GITHUB_ENV
+      # -----------------------------
+      # 🐍 Backend
+      # -----------------------------
+      - name: Build Backend Image
+        run: |
+          docker build \
+            -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$BACKEND_REPO:latest \
+            -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$BACKEND_REPO:$IMAGE_TAG \
+            ./backend
+      - name: Push Backend Image
+        run: |
+          docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/costops/$BACKEND_REPO:latest
+          docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/costops/$BACKEND_REPO:$IMAGE_TAG
+      # -----------------------------
+      # ⚛️ Frontend
+      # -----------------------------
+      - name: Build Frontend Image
+        run: |
+          docker build \
+            -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/costops/$FRONTEND_REPO:latest \
+            -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/costops/$FRONTEND_REPO:$IMAGE_TAG \
+            ./frontend
+      - name: Push Frontend Image
+        run: |
+          docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/costops/$FRONTEND_REPO:latest
+          docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/costops/$FRONTEND_REPO:$IMAGE_TAG
