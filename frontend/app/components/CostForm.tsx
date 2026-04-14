@@ -1,9 +1,9 @@
 'use client'
 import { useState } from 'react'
-import { ApiResponse } from '../page.tsx' 
+import { ApiResponse } from '../types.tsx'
 
 interface CostFormProps {
-  onEstimateComplete?: (data: any) => void
+  onEstimateComplete?: (data: ApiResponse) => void
 }
 
 export default function CostForm({ onEstimateComplete }: CostFormProps) {
