@@ -8,12 +8,18 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["*", "http://localhost:3000"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-@app.post("/estimate")
+api_router = FastAPI()
+
+@api_router.get("/health")
+def health():
+    return {"status": "ok"}
+
+@api_router.post("/estimate")
 def estimate(req: CostRequest):
     aws = calculate_cost("aws", req.cpu, req.ram, req.storage)
     azure = calculate_cost("azure", req.cpu, req.ram, req.storage)
@@ -23,3 +29,6 @@ def estimate(req: CostRequest):
     recommendation = get_ai_recommendation(costs)
 
     return {"costs": costs, "recommendation": recommendation}
+
+app.mount("/api", api_router)
+app.mount("/", api_router)
