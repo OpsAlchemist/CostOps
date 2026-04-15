@@ -23,6 +23,9 @@ Cost optimization tips
 # ------------------------
 def call_openai(prompt):
     api_key = os.getenv("OPENAI_API_KEY")
+    print("--Debug--")
+    print(api_key)
+    print("---------")
 
     if not api_key:
         return "Missing OPENAI_API_KEY"
@@ -92,7 +95,7 @@ def call_claude(prompt):
 # ------------------------
 def get_ai_recommendation(data):
     prompt = build_prompt(data)
-
+    print(PROVIDER)
     try:
         if PROVIDER == "openai":
             return call_openai(prompt)
