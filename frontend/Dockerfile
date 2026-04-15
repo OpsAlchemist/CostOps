@@ -21,6 +21,10 @@ RUN npm ci
 # Copy all source files
 COPY . .
 
+# Accept API URL as build arg (defaults to relative /api for production)
+ARG NEXT_PUBLIC_API_URL=/api
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
 # Set environment for production build
 ENV NODE_ENV=production
 

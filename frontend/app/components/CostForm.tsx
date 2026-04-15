@@ -20,7 +20,7 @@ export default function CostForm({ onEstimateComplete }: CostFormProps) {
     setError(null)
     
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "/api"
       const res = await fetch(`${apiUrl}/estimate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

@@ -8,8 +8,8 @@ output "alb_dns_name" {
 }
 
 output "alb_url" {
-  description = "Full URL of the Application Load Balancer (HTTP)"
-  value       = "http://${aws_lb.main.dns_name}"
+  description = "Full URL of the Application Load Balancer (HTTPS)"
+  value       = "https://${var.subdomain}"
 }
 
 output "alb_arn" {
@@ -176,12 +176,12 @@ output "ecs_task_role_arn" {
 
 output "frontend_url" {
   description = "URL to access the frontend application"
-  value       = "http://${aws_lb.main.dns_name}/"
+  value       = "https://${var.subdomain}/"
 }
 
 output "backend_api_url" {
   description = "URL to access the backend API"
-  value       = "http://${aws_lb.main.dns_name}/api"
+  value       = "https://${var.subdomain}/api"
 }
 
 output "backend_health_check_url" {
@@ -203,6 +203,6 @@ output "deployment_summary" {
     backend_tasks       = var.backend_desired_count
     frontend_cpu_memory = "${var.frontend_cpu}/${var.frontend_memory}"
     backend_cpu_memory  = "${var.backend_cpu}/${var.backend_memory}"
-    alb_url             = "http://${aws_lb.main.dns_name}"
+    alb_url             = "https://${var.subdomain}"
   }
 }
