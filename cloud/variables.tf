@@ -144,6 +144,12 @@ variable "backend_health_check_path" {
   default     = "/health"
 }
 
+variable "openai_api_key" {
+  description = "OpenAI API key for AI recommendations"
+  type        = string
+  sensitive   = true
+}
+
 # ========================================
 # Load Balancer Configuration
 # ========================================
