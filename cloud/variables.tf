@@ -167,3 +167,24 @@ variable "log_retention_days" {
     error_message = "Log retention days must be a valid CloudWatch Logs retention period."
   }
 }
+
+# ========================================
+# DNS and SSL Configuration
+# ========================================
+
+variable "acm_certificate_arn" {
+  description = "ARN of the ACM certificate for HTTPS"
+  type        = string
+}
+
+variable "domain_name" {
+  description = "Root domain name (e.g., opsalchemistlabs.co.in)"
+  type        = string
+  default     = ""
+}
+
+variable "subdomain" {
+  description = "Full subdomain for the application (e.g., costops.opsalchemistlabs.co.in)"
+  type        = string
+  default     = ""
+}

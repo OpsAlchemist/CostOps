@@ -9,7 +9,10 @@ services:
       - OPENAI_API_KEY=your_api_key_here
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        - NEXT_PUBLIC_API_URL=http://localhost:8000
     ports:
       - "3000:3000"
     depends_on:
