@@ -23,9 +23,6 @@ Cost optimization tips
 # ------------------------
 def call_openai(prompt):
     api_key = os.getenv("OPENAI_API_KEY")
-    print("--Debug--")
-    print(api_key)
-    print("---------")
 
     if not api_key:
         return "Missing OPENAI_API_KEY"

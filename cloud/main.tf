@@ -486,7 +486,7 @@ resource "aws_ecs_task_definition" "frontend" {
       }
 
       healthCheck = {
-        command     = ["CMD-SHELL", "curl -f http://localhost:3000/ || exit 1"]
+        command     = ["CMD-SHELL", "wget -qO- http://localhost:3000/ || exit 1"]
         interval    = 30
         timeout     = 5
         retries     = 3
@@ -532,6 +532,10 @@ resource "aws_ecs_task_definition" "backend" {
         {
           name  = "ENVIRONMENT"
           value = var.environment
+        },
+        {
+          name  = "OPENAI_API_KEY"
+          value = var.openai_api_key
         }
       ]
 
@@ -545,7 +549,7 @@ resource "aws_ecs_task_definition" "backend" {
       }
 
       healthCheck = {
-        command     = ["CMD-SHELL", "curl -f http://localhost:8000${var.backend_health_check_path} || exit 1"]
+        command     = ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000${var.backend_health_check_path}')\" || exit 1"]
         interval    = 30
         timeout     = 5
         retries     = 3
