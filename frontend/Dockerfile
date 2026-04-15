@@ -1,5 +1,5 @@
-# Use official Node.js runtime as base image
-FROM node:18 AS builder
+# Use official Node.js runtime as base image (matching your local Node 20)
+FROM node:20 AS builder
 
 # Set working directory
 WORKDIR /app
@@ -18,9 +18,6 @@ RUN npm ci
 # Build Application
 # --------------------------
 
-# Copy TypeScript config before source code
-COPY tsconfig.json .
-
 # Copy all source files
 COPY . .
 
@@ -30,25 +27,40 @@ ENV NODE_ENV=production
 # Compile TypeScript and build Next.js app
 RUN npm run build
 
+# Ensure public directory exists (create empty one if missing)
+RUN mkdir -p /app/public
+
 # --------------------------
 # Production Image
 # --------------------------
 
-FROM node:18-alpine AS runner
+FROM node:20-alpine AS runner
 
 WORKDIR /app
 
-# Copy built files from builder stage
-COPY --from=builder /app/.next ./
+# Set production environment
+ENV NODE_ENV=production
 
-# Only copy necessary runtime files
+# Copy package files for runtime
 COPY package*.json ./
 
 # Install production-only dependencies
 RUN npm ci --omit=dev
 
-# Expose port for Next.js
+# Copy the entire .next folder (standalone build + static files)
+COPY --from=builder /app/.next ./.next
+
+# Copy public folder (now guaranteed to exist from builder stage)
+COPY --from=builder /app/public ./public
+
+# Create a non-root user for security
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs && \
+    chown -R nextjs:nodejs /app
+
+USER nextjs
+
+# Expose port and start the production server
 EXPOSE 3000
 
-# Start the application
 CMD ["npm", "start"]

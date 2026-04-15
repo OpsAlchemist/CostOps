@@ -1,9 +1,9 @@
 {
   "compilerOptions": {
     "target": "es2017",
-    "module": "NodeNext", // ✅ Changed from "esnext" to "NodeNext"
+    "module": "nodenext",
     "moduleResolution": "nodenext",
-    "jsx": "preserve",
+    "jsx": "preserve", 
     "strict": true,
     "isolatedModules": true,
     "esModuleInterop": true,
@@ -16,7 +16,7 @@
     "types": [
       "node",
       "react"
-    ], 
+    ],
     "baseUrl": ".",
     "paths": {
       "@/*": [
@@ -24,12 +24,13 @@
       ]
     },
     "allowImportingTsExtensions": true,
-    "ignoreDeprecations": "6.0",
+    "ignoreDeprecations": "5.0",
     "lib": [
       "dom",
       "dom.iterable",
       "esnext"
-    ],
+    ] // ✅ Includes DOM types
+    ,
     "allowJs": true,
     "noEmit": true,
     "plugins": [
@@ -42,7 +43,8 @@
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
-    ".next/types/**/*.ts"
+    ".next/types/**/*.ts", // ✅ Next.js type generation
+    ".next/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",
