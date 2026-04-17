@@ -40,7 +40,10 @@ def call_openai(prompt):
         timeout=10
     )
 
-    return res.json()["choices"][0]["message"]["content"]
+    data = res.json()
+    if "error" in data:
+        return f"OpenAI Error: {data['error'].get('message', str(data['error']))}"
+    return data["choices"][0]["message"]["content"]
 
 # ------------------------
 # Gemini
