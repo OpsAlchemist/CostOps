@@ -95,6 +95,11 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
 
 
 @api_router.post("/signup")
+ADMIN_EMAILS = {
+    "admin", "admin@costops.ai", "connect.mrkc@gmail.com", "admin@opsalchemistlabs.co.in"
+}
+
+
 def signup(req: SignupRequest, db: Session = Depends(get_db)):
     existing = db.query(User).filter(
         (User.username == req.username) | (User.email == req.email)
@@ -102,17 +107,22 @@ def signup(req: SignupRequest, db: Session = Depends(get_db)):
     if existing:
         raise HTTPException(status_code=409, detail="Username or email already exists")
     hashed = pwd_context.hash(req.password)
+
+    # Auto-assign admin role for designated accounts
+    role = "admin" if req.email in ADMIN_EMAILS or req.username in ADMIN_EMAILS else "user"
+
     user = User(
         username=req.username,
         password_hash=hashed,
         name=req.name,
         email=req.email,
+        role=role,
     )
     db.add(user)
     db.commit()
     db.refresh(user)
     token = create_access_token(user.id, user.role)
-    logger.info("New user signed up: %s (id=%s)", user.username, user.id)
+    logger.info("New user signed up: %s (id=%s, role=%s)", user.username, user.id, user.role)
     return {"token": token}
 
 @api_router.put("/user/profile")
@@ -226,6 +236,29 @@ def list_users(
         }
         for u in users
     ]
+
+
+@api_router.delete("/admin/users/{user_id}")
+def delete_user(
+    user_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    if current_user["user_id"] == user_id:
+        raise HTTPException(status_code=400, detail="Cannot delete yourself")
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Delete associated credentials
+    db.query(UserCloudCredential).filter(UserCloudCredential.user_id == user_id).delete()
+    db.delete(user)
+    db.commit()
+    logger.info("User deleted: %s (id=%s) by admin (id=%s)", user.username, user_id, current_user["user_id"])
+    return {"status": "deleted"}
 
 
 @api_router.post("/user/connect-cloud")

@@ -7,22 +7,23 @@ export const LoginPage = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setLoading(true);
 
     try {
       await login(username, password);
-      navigate('/calculator');
+      navigate('/overview');
     } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError('Unable to connect to server');
-      }
+      const msg = err instanceof Error ? err.message : 'Unable to connect to server';
+      setError(msg);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -76,9 +77,9 @@ export const LoginPage = () => {
             </div>
           </div>
 
-          <button type="submit" className="btn-primary w-full group mt-2">
-            Continue to Dashboard
-            <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+          <button type="submit" disabled={loading} className="btn-primary w-full group mt-2">
+            {loading ? 'Signing in...' : 'Continue to Dashboard'}
+            {!loading && <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />}
           </button>
         </form>
 

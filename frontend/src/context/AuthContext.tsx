@@ -86,11 +86,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     if (!res.ok) {
-      const data = await res.json();
-      throw new Error(data.detail || data.message || 'Login failed');
+      let msg = 'Login failed';
+      try {
+        const data = await res.json();
+        msg = data.detail || data.message || msg;
+      } catch {
+        msg = `Server error (${res.status})`;
+      }
+      throw new Error(msg);
     }
 
-    const data = await res.json();
+    let data;
+    try {
+      data = await res.json();
+    } catch {
+      throw new Error('Invalid response from server');
+    }
+
     const token = data.access_token || data.token;
     if (!token) {
       throw new Error('No token received');
