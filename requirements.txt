@@ -10,3 +10,4 @@ passlib[bcrypt]
 bcrypt==4.1.3
 cryptography
 email-validator
+boto3

@@ -14,3 +14,4 @@ email-validator
 hypothesis
 httpx
 pytest
+boto3
