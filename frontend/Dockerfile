@@ -1,70 +1,50 @@
-# Use official Node.js runtime as base image (matching your local Node 20)
+# Build stage
 FROM node:20 AS builder
 
-# Set working directory
 WORKDIR /app
 
-# --------------------------
-# Install Dependencies
-# --------------------------
-
-# Copy package files first for optimal layer caching
 COPY package*.json ./
-
-# Install exact dependencies from lockfile
 RUN npm ci
 
-# --------------------------
-# Build Application
-# --------------------------
-
-# Copy all source files
 COPY . .
 
-# Accept API URL as build arg (defaults to relative /api for production)
+# Accept build args for Vite env vars
 ARG NEXT_PUBLIC_API_URL=/api
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
-# Set environment for production build
-ENV NODE_ENV=production
+ARG VITE_ADMIN=true
+ENV VITE_ADMIN=$VITE_ADMIN
 
-# Compile TypeScript and build Next.js app
+ENV NODE_ENV=production
 RUN npm run build
 
-# Ensure public directory exists (create empty one if missing)
-RUN mkdir -p /app/public
-
-# --------------------------
-# Production Image
-# --------------------------
-
+# Production stage
 FROM node:20-alpine AS runner
 
 WORKDIR /app
 
-# Set production environment
 ENV NODE_ENV=production
 
-# Copy package files for runtime
 COPY package*.json ./
+RUN npm ci --omit=dev --ignore-scripts
 
-# Install production-only dependencies
-RUN npm ci --omit=dev
+# Copy built static files
+COPY --from=builder /app/dist ./dist
 
-# Copy the entire .next folder (standalone build + static files)
-COPY --from=builder /app/.next ./.next
+# Copy server for production serving
+COPY --from=builder /app/server.ts ./server.ts
+COPY --from=builder /app/tsconfig.json ./tsconfig.json
 
-# Copy public folder (now guaranteed to exist from builder stage)
-COPY --from=builder /app/public ./public
+# Install tsx for running the TypeScript server
+RUN npm install tsx --ignore-scripts
 
-# Create a non-root user for security
+# Create non-root user
 RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nextjs && \
-    chown -R nextjs:nodejs /app
+    adduser --system --uid 1001 appuser && \
+    chown -R appuser:nodejs /app
 
-USER nextjs
+USER appuser
 
-# Expose port and start the production server
 EXPOSE 3000
 
-CMD ["npm", "start"]
+CMD ["npx", "tsx", "server.ts"]

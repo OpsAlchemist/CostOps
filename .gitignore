@@ -6,6 +6,7 @@
 *.env
 *.key
 *.pem
+.kiro/
 
 # =========================
 # :snake: Python (FastAPI)

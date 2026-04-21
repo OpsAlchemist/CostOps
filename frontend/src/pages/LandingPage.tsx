@@ -149,11 +149,11 @@ export const LandingPage = () => {
             transition={{ delay: 0.3 }}
             className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto"
           >
-            <Link to="/login" className="btn-primary">
+            <Link to="/signup" className="btn-primary">
               Start Saving Now
               <ArrowRight size={18} />
             </Link>
-            <Link to="/login" className="btn-secondary">
+            <Link to="/signup" className="btn-secondary">
               Book a Demo
             </Link>
           </motion.div>
@@ -161,7 +161,7 @@ export const LandingPage = () => {
       </section>
 
       {/* Stats Section */}
-      <section className="py-8 px-8 bg-surface">
+      <section id="overview" className="py-8 px-8 bg-surface">
         <div className="max-w-7xl mx-auto grid md:grid-cols-3 gap-6">
           <div className="panel-card p-6 flex flex-col gap-2">
             <span className="text-[11px] font-bold text-ink-muted uppercase tracking-wider">Monthly Spend</span>
@@ -182,7 +182,7 @@ export const LandingPage = () => {
       </section>
 
       {/* Features Grid */}
-      <section id="features" className="py-24 px-8 border-y border-border bg-panel">
+      <section id="infrastructure" className="py-24 px-8 border-y border-border bg-panel">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-16 gap-6">
             <div className="max-w-lg">
@@ -238,7 +238,7 @@ export const LandingPage = () => {
       </section>
 
       {/* AI Recommendations Layout simulation */}
-      <section className="py-20 bg-surface">
+      <section id="optimization" className="py-20 bg-surface">
         <div className="max-w-7xl mx-auto px-8 grid lg:grid-cols-2 gap-8 items-start">
           <div className="panel-card p-8 order-2 lg:order-1 h-full min-h-[400px]">
             <div className="flex justify-between items-center mb-10">
@@ -289,7 +289,7 @@ export const LandingPage = () => {
       </section>
 
       {/* Social Proof */}
-      <section className="py-24 border-y border-border bg-panel">
+      <section id="reporting" className="py-24 border-y border-border bg-panel">
         <div className="max-w-7xl mx-auto px-8 text-center">
           <p className="text-xs font-bold text-ink-muted uppercase tracking-[0.2em] mb-12">Trusted by modern engineering teams</p>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-x-12 gap-y-8 items-center opacity-40 grayscale hover:grayscale-0 transition-all duration-500">

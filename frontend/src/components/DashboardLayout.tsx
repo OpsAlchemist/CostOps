@@ -11,7 +11,9 @@ import {
   TrendingDown,
   ChevronRight,
   User,
-  Zap
+  Zap,
+  FileText,
+  Calculator
 } from 'lucide-react';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { motion, AnimatePresence } from 'motion/react';
@@ -46,7 +48,9 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
   const menuItems = [
     { icon: BarChart3, label: "Overview", href: "/overview" },
     { icon: TrendingDown, label: "Optimization", href: "/optimization" },
+    { icon: Calculator, label: "Cost Calculator", href: "/calculator" },
     { icon: Layers, label: "Infrastructure", href: "/infrastructure" },
+    { icon: FileText, label: "Reporting", href: "/reporting" },
     { icon: Settings, label: "Settings", href: "/settings" },
   ];
 
@@ -54,12 +58,12 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
     <div className="flex min-h-screen bg-surface">
       {/* Desktop Sidebar */}
       <aside className="hidden lg:flex flex-col w-64 bg-panel border-r border-border p-6 fixed h-screen">
-        <div className="flex items-center gap-2.5 mb-10 px-2">
+        <Link to="/calculator" className="flex items-center gap-2.5 mb-10 px-2">
           <div className="w-8 h-8 bg-brand-primary rounded-[6px] flex items-center justify-center text-white font-black">
             C
           </div>
           <span className="font-bold text-ink-heading tracking-tight">CostOps AI</span>
-        </div>
+        </Link>
 
         <nav className="flex flex-col gap-2 flex-1">
           {menuItems.map(item => (
@@ -91,9 +95,9 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
             <button onClick={() => setIsMobileMenuOpen(true)}>
               <Menu size={24} />
             </button>
-            <div className="w-8 h-8 bg-brand-primary rounded-[6px] flex items-center justify-center text-white font-black">
+            <Link to="/calculator" className="w-8 h-8 bg-brand-primary rounded-[6px] flex items-center justify-center text-white font-black">
               C
-            </div>
+            </Link>
           </div>
 
           <div className="hidden lg:flex items-center gap-2 text-sm font-bold text-ink-muted">
@@ -138,12 +142,12 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
               className="fixed inset-y-0 left-0 w-64 bg-panel z-[60] lg:hidden p-6 flex flex-col"
             >
               <div className="flex justify-between items-center mb-10">
-                <div className="flex items-center gap-2.5">
+                <Link to="/calculator" className="flex items-center gap-2.5">
                   <div className="w-8 h-8 bg-brand-primary rounded-[6px] flex items-center justify-center text-white font-black">
                     C
                   </div>
                   <span className="font-bold text-ink-heading tracking-tight">CostOps AI</span>
-                </div>
+                </Link>
                 <button onClick={() => setIsMobileMenuOpen(false)}>
                   <X size={20} />
                 </button>

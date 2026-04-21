@@ -37,5 +37,31 @@ export const apiService = {
     });
     if (!res.ok) throw new Error('Failed to fetch history');
     return res.json();
-  }
+  },
+
+  updateProfile: async (data: { name: string; company: string; email: string; bio: string }) => {
+    const res = await fetch(`${BASE_URL}/user/profile`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Failed to update profile');
+    }
+    return res.json();
+  },
+
+  connectCloud: async (data: { cloud_provider: string; access_key_id: string; secret_access_key: string }) => {
+    const res = await fetch(`${BASE_URL}/user/connect-cloud`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Failed to connect cloud account');
+    }
+    return res.json();
+  },
 };
