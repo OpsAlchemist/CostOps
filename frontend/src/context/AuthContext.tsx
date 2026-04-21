@@ -49,6 +49,14 @@ function isTokenExpired(token: string): boolean {
   }
 }
 
+async function hashPassword(password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(() => {
     const token = localStorage.getItem('auth_token');
@@ -70,10 +78,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = useCallback(async (username: string, password: string) => {
+    const hashedPassword = await hashPassword(password);
     const res = await fetch(`${BASE_URL}/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ username, password: hashedPassword }),
     });
 
     if (!res.ok) {
@@ -92,10 +101,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [BASE_URL]);
 
   const signup = useCallback(async (username: string, password: string, name: string, email: string) => {
+    const hashedPassword = await hashPassword(password);
     const res = await fetch(`${BASE_URL}/signup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password, name, email }),
+      body: JSON.stringify({ username, password: hashedPassword, name, email }),
     });
 
     if (!res.ok) {
