@@ -248,55 +248,62 @@ def calculate_cost_endpoint(req: CalculateCostRequest, db: Session = Depends(get
             detail=f"Unsupported cloud provider: {req.cloud_provider}. Supported: aws, azure, gcp",
         )
 
-    # Build cache key from request (include cloud_provider)
-    cache_key_data = json.dumps(
-        {"cloud_provider": req.cloud_provider, "service": req.service, "parameters": req.parameters},
-        sort_keys=True,
-    )
-    query_hash = hashlib.sha256(cache_key_data.encode()).hexdigest()
+    try:
+        # Build cache key from request (include cloud_provider)
+        cache_key_data = json.dumps(
+            {"cloud_provider": req.cloud_provider, "service": req.service, "parameters": req.parameters},
+            sort_keys=True,
+        )
+        query_hash = hashlib.sha256(cache_key_data.encode()).hexdigest()
 
-    # Check cache
-    now = datetime.now(timezone.utc)
-    cached = db.query(QueryCache).filter(QueryCache.query_hash == query_hash).first()
-    if cached and cached.expires_at.replace(tzinfo=timezone.utc) > now:
-        result = cached.result
-        result["cache_hit"] = True
-        return result
+        # Check cache
+        now = datetime.now(timezone.utc)
+        cached = db.query(QueryCache).filter(QueryCache.query_hash == query_hash).first()
+        if cached and cached.expires_at.replace(tzinfo=timezone.utc) > now:
+            result = cached.result
+            result["cache_hit"] = True
+            return result
 
-    # Route to the correct provider pricing module
-    provider_calculators = {
-        "aws": calculate_aws_cost,
-        "azure": calculate_azure_cost,
-        "gcp": calculate_gcp_cost,
-    }
-    calculate_fn = provider_calculators[req.cloud_provider]
-    result = calculate_fn(req.service, req.parameters, db)
+        # Route to the correct provider pricing module
+        provider_calculators = {
+            "aws": calculate_aws_cost,
+            "azure": calculate_azure_cost,
+            "gcp": calculate_gcp_cost,
+        }
+        calculate_fn = provider_calculators[req.cloud_provider]
+        result = calculate_fn(req.service, req.parameters, db)
 
-    if "error" in result:
-        raise HTTPException(status_code=400, detail=result["error"])
+        if "error" in result:
+            raise HTTPException(status_code=400, detail=result["error"])
 
-    result["cache_hit"] = False
+        result["cache_hit"] = False
 
-    # Store in cache (TTL = 24h)
-    if cached:
-        cached.result = result
-        cached.expires_at = now + timedelta(hours=24)
-    else:
-        db.add(QueryCache(
-            query_hash=query_hash,
-            result=result,
-            expires_at=now + timedelta(hours=24)
+        # Store in cache (TTL = 24h)
+        if cached:
+            cached.result = result
+            cached.expires_at = now + timedelta(hours=24)
+        else:
+            db.add(QueryCache(
+                query_hash=query_hash,
+                result=result,
+                expires_at=now + timedelta(hours=24)
+            ))
+
+        # Store calculation history
+        db.add(CostCalculation(
+            service=req.service,
+            parameters=req.parameters,
+            result=result
         ))
 
-    # Store calculation history
-    db.add(CostCalculation(
-        service=req.service,
-        parameters=req.parameters,
-        result=result
-    ))
+        db.commit()
+        return result
 
-    db.commit()
-    return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Calculation failed: {str(e)}")
 
 @api_router.get("/stats")
 def stats():
