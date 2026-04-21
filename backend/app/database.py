@@ -11,9 +11,12 @@ DB_HOST = os.getenv("DB_HOST", "localhost")
 DB_PORT = int(os.getenv("DB_PORT", "5432"))
 DB_NAME = os.getenv("DB_NAME", "postgres")
 DB_USER = os.getenv("DB_USER", "postgres")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "")
 DB_REGION = os.getenv("DB_REGION", "us-east-1")
 DB_USE_IAM_AUTH = os.getenv("DB_USE_IAM_AUTH", "true").lower() == "true"
 
+# Priority: DATABASE_URL > IAM auth > password auth
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 def _get_iam_token():
     client = boto3.client(
