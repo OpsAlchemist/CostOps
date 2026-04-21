@@ -9,6 +9,7 @@ import { Overview } from './pages/dashboard/Overview';
 import { Optimization } from './pages/dashboard/Optimization';
 import { Reporting } from './pages/dashboard/Reporting';
 import { CostCalculator } from './pages/dashboard/CostCalculator';
+import { UserManagement } from './pages/dashboard/UserManagement';
 import { Settings } from './pages/Settings';
 import { DashboardLayout } from './components/DashboardLayout';
 
@@ -20,7 +21,7 @@ const Placeholder = ({ name }: { name: string }) => (
 
 const RootRoute = () => {
   const { isAuthenticated } = useAuth();
-  return isAuthenticated ? <Navigate to="/calculator" replace /> : <LandingPage />;
+  return isAuthenticated ? <Navigate to="/overview" replace /> : <LandingPage />;
 };
 
 const AdminRoute = ({ children }: { children: React.ReactNode }) => {
@@ -63,7 +64,12 @@ export default function App() {
             } />
             <Route path="/settings" element={
               <DashboardLayout>
-                <AdminRoute><Settings /></AdminRoute>
+                <Settings />
+              </DashboardLayout>
+            } />
+            <Route path="/user-management" element={
+              <DashboardLayout>
+                <AdminRoute><UserManagement /></AdminRoute>
               </DashboardLayout>
             } />
 

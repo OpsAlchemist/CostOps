@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { 
   BarChart3, 
   Layers, 
@@ -13,7 +14,8 @@ import {
   User,
   Zap,
   FileText,
-  Calculator
+  Calculator,
+  Users
 } from 'lucide-react';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { motion, AnimatePresence } from 'motion/react';
@@ -44,6 +46,16 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
+
+  const getInitials = () => {
+    if (user?.username) {
+      const parts = user.username.split(/[\s@.]+/);
+      if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+      return user.username.substring(0, 2).toUpperCase();
+    }
+    return '??';
+  };
 
   const menuItems = [
     { icon: BarChart3, label: "Overview", href: "/overview" },
@@ -52,13 +64,14 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
     { icon: Layers, label: "Infrastructure", href: "/infrastructure" },
     { icon: FileText, label: "Reporting", href: "/reporting" },
     { icon: Settings, label: "Settings", href: "/settings" },
+    ...(user?.role === 'admin' ? [{ icon: Users, label: "User Management", href: "/user-management" }] : []),
   ];
 
   return (
     <div className="flex min-h-screen bg-surface">
       {/* Desktop Sidebar */}
       <aside className="hidden lg:flex flex-col w-64 bg-panel border-r border-border p-6 fixed h-screen">
-        <Link to="/calculator" className="flex items-center gap-2.5 mb-10 px-2">
+        <Link to="/overview" className="flex items-center gap-2.5 mb-10 px-2">
           <div className="w-8 h-8 bg-brand-primary rounded-[6px] flex items-center justify-center text-white font-black">
             C
           </div>
@@ -95,7 +108,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
             <button onClick={() => setIsMobileMenuOpen(true)}>
               <Menu size={24} />
             </button>
-            <Link to="/calculator" className="w-8 h-8 bg-brand-primary rounded-[6px] flex items-center justify-center text-white font-black">
+            <Link to="/overview" className="w-8 h-8 bg-brand-primary rounded-[6px] flex items-center justify-center text-white font-black">
               C
             </Link>
           </div>
@@ -113,7 +126,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-danger rounded-full border-2 border-panel" />
             </button>
             <div className="w-9 h-9 rounded-full bg-surface border border-border flex items-center justify-center text-sm font-semibold text-ink-heading cursor-pointer hover:border-brand-primary/50" onClick={() => navigate('/settings')}>
-              JD
+              {getInitials()}
             </div>
           </div>
         </header>
@@ -142,7 +155,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
               className="fixed inset-y-0 left-0 w-64 bg-panel z-[60] lg:hidden p-6 flex flex-col"
             >
               <div className="flex justify-between items-center mb-10">
-                <Link to="/calculator" className="flex items-center gap-2.5">
+                <Link to="/overview" className="flex items-center gap-2.5">
                   <div className="w-8 h-8 bg-brand-primary rounded-[6px] flex items-center justify-center text-white font-black">
                     C
                   </div>
