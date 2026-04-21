@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: ["**"]
 
+permissions:
+  contents: read
+  issues: write
+
 jobs:
   # ==========================================
   #  Backend CI

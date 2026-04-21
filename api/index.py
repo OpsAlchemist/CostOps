@@ -6,18 +6,17 @@ import traceback
 # Add backend to Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'backend'))
 
+# Import the app — Vercel requires a top-level `app` variable
 try:
     from app.main import app
-except Exception as e:
-    # If the app fails to import, create a minimal FastAPI that returns the error
+except Exception as _import_error:
+    import traceback
     from fastapi import FastAPI
+
+    _error_detail = f"{type(_import_error).__name__}: {_import_error}\n{traceback.format_exc()}"
+
     app = FastAPI()
 
-    error_msg = f"{type(e).__name__}: {e}\n{traceback.format_exc()}"
-
-    @app.get("/api/{path:path}")
-    @app.post("/api/{path:path}")
-    @app.put("/api/{path:path}")
-    @app.delete("/api/{path:path}")
+    @app.api_route("/api/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
     async def error_handler(path: str):
-        return {"error": "App failed to start", "detail": error_msg}
+        return {"error": "App failed to start", "detail": _error_detail}
