@@ -18,9 +18,10 @@ from sqlalchemy.dialects.postgresql import JSONB
 # Ensure the app package is importable
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-# Set FERNET_KEY before any app imports
+# Set FERNET_KEY before any app imports (force-set if empty or missing)
 _TEST_FERNET_KEY = Fernet.generate_key().decode()
-os.environ.setdefault("FERNET_KEY", _TEST_FERNET_KEY)
+if not os.environ.get("FERNET_KEY"):
+    os.environ["FERNET_KEY"] = _TEST_FERNET_KEY
 
 # Remap JSONB -> JSON for SQLite compatibility before importing models
 import app.db_models as _dbm

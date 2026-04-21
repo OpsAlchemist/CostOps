@@ -94,6 +94,11 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
     return {"token": token}
 
 
+ADMIN_EMAILS = {
+    "admin", "admin@costops.ai", "connect.mrkc@gmail.com", "admin@opsalchemistlabs.co.in"
+}
+
+
 @api_router.post("/signup")
 ADMIN_EMAILS = {
     "admin", "admin@costops.ai", "connect.mrkc@gmail.com", "admin@opsalchemistlabs.co.in"
