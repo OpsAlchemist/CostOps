@@ -31,13 +31,16 @@ try:
                 aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
                 aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
             )
-            return client.generate_db_auth_token(
+            token = client.generate_db_auth_token(
                 DBHostname=DB_HOST, Port=DB_PORT,
                 DBUsername=DB_USER, Region=DB_REGION,
             )
+            logger.info("IAM token generated (length=%d, host=%s, user=%s)", len(token), DB_HOST, DB_USER)
+            return token
 
         def _iam_creator():
             token = _get_iam_token()
+            logger.info("Connecting to RDS: host=%s port=%d db=%s user=%s ssl=require", DB_HOST, DB_PORT, DB_NAME, DB_USER)
             return psycopg2.connect(
                 host=DB_HOST, port=DB_PORT, database=DB_NAME,
                 user=DB_USER, password=token, sslmode="require",
