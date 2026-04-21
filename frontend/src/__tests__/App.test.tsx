@@ -3,7 +3,7 @@
  *
  * **Validates: Requirements 9.1, 9.2**
  *
- * 9.1 — Authenticated users at `/` are redirected to `/calculator`
+ * 9.1 — Authenticated users at `/` are redirected to `/overview`
  * 9.2 — Unauthenticated users at `/` see the LandingPage
  */
 import { render, screen } from '@testing-library/react';
@@ -34,10 +34,11 @@ vi.mock('../pages/dashboard/CostCalculator', () => ({
 // Minimal stubs for other route components
 vi.mock('../pages/LoginPage', () => ({ LoginPage: () => <div>Login</div> }));
 vi.mock('../pages/SignupPage', () => ({ SignupPage: () => <div>Signup</div> }));
-vi.mock('../pages/dashboard/Overview', () => ({ Overview: () => <div>Overview</div> }));
+vi.mock('../pages/dashboard/Overview', () => ({ Overview: () => <div data-testid="overview-page">Overview</div> }));
 vi.mock('../pages/dashboard/Optimization', () => ({ Optimization: () => <div>Optimization</div> }));
 vi.mock('../pages/dashboard/Reporting', () => ({ Reporting: () => <div>Reporting</div> }));
 vi.mock('../pages/Settings', () => ({ Settings: () => <div>Settings</div> }));
+vi.mock('../pages/dashboard/UserManagement', () => ({ UserManagement: () => <div>UserManagement</div> }));
 vi.mock('../components/DashboardLayout', () => ({
   DashboardLayout: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
@@ -69,7 +70,7 @@ function renderApp(initialRoute: string) {
 }
 
 describe('Root route auth redirect', () => {
-  it('redirects authenticated users from / to /calculator (Req 9.1)', () => {
+  it('redirects authenticated users from / to /overview (Req 9.1)', () => {
     mockUseAuth.mockReturnValue({
       isAuthenticated: true,
       user: { user_id: 1, role: 'user' },
@@ -81,7 +82,7 @@ describe('Root route auth redirect', () => {
 
     renderApp('/');
 
-    expect(screen.getByTestId('calculator-page')).toBeInTheDocument();
+    expect(screen.getByTestId('overview-page')).toBeInTheDocument();
     expect(screen.queryByTestId('landing-page')).not.toBeInTheDocument();
   });
 

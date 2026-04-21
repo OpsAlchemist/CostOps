@@ -94,12 +94,12 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
     return {"token": token}
 
 
-@api_router.post("/signup")
 ADMIN_EMAILS = {
     "admin", "admin@costops.ai", "connect.mrkc@gmail.com", "admin@opsalchemistlabs.co.in"
 }
 
 
+@api_router.post("/signup")
 def signup(req: SignupRequest, db: Session = Depends(get_db)):
     existing = db.query(User).filter(
         (User.username == req.username) | (User.email == req.email)
