@@ -47,14 +47,14 @@ export const LoginPage = () => {
           )}
 
           <div className="flex flex-col gap-2">
-            <label className="text-xs font-bold uppercase tracking-widest text-ink-muted">Username</label>
+            <label className="text-xs font-bold uppercase tracking-widest text-ink-muted">Username or Email</label>
             <div className="relative">
               <User className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" size={18} />
               <input
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="admin"
+                placeholder="name@company.com"
                 className="w-full pl-10 pr-4 py-3 rounded-lg border border-border bg-surface focus:outline-hidden focus:border-brand-primary transition-colors text-sm"
                 required
               />

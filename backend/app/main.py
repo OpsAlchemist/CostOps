@@ -39,7 +39,9 @@ def health():
 
 @api_router.post("/login")
 def login(req: LoginRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.username == req.username).first()
+    user = db.query(User).filter(
+        (User.username == req.username) | (User.email == req.username)
+    ).first()
     if not user or not pwd_context.verify(req.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     token = create_access_token(user.id, user.role)
