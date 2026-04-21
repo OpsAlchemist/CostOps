@@ -1,0 +1,80 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  
+  --color-brand-primary: #3B82F6;
+  --color-brand-hover: #2563EB;
+  
+  /* The variables below are controlled by the .dark class on html */
+  --color-surface: var(--bg-surface);
+  --color-ink: var(--txt-ink);
+  --color-ink-heading: var(--txt-heading);
+  --color-ink-muted: var(--txt-muted);
+  --color-border: var(--border-color);
+  --color-panel: var(--panel-bg);
+  
+  --color-success: #10B981;
+  --color-danger: #EF4444;
+}
+
+:root {
+  --bg-surface: #F8FAFC;
+  --txt-ink: #1E293B;
+  --txt-heading: #0F172A;
+  --txt-muted: #64748B;
+  --border-color: #E2E8F0;
+  --panel-bg: #FFFFFF;
+}
+
+.dark {
+  --bg-surface: #0F172A;
+  --txt-ink: #94A3B8;
+  --txt-heading: #F8FAFC;
+  --txt-muted: #64748B;
+  --border-color: #1E293B;
+  --panel-bg: #111827;
+}
+
+@layer base {
+  body {
+    @apply bg-surface text-ink font-sans antialiased transition-colors duration-300;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply text-ink-heading tracking-tight font-bold;
+  }
+}
+
+.panel-card {
+  @apply bg-panel border border-border rounded-[12px] shadow-sm;
+}
+
+.rec-card {
+  @apply p-4 bg-surface border border-border rounded-[8px];
+}
+
+.tag-badge {
+  @apply px-2 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-wider;
+}
+
+.tag-blue {
+  @apply bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300;
+}
+
+.tag-amber {
+  @apply bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300;
+}
+
+.tag-green {
+  @apply bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300;
+}
+
+.btn-primary {
+  @apply px-6 py-3 bg-brand-primary text-white font-bold rounded-lg hover:bg-brand-hover transition-all flex items-center justify-center gap-2;
+}
+
+.btn-secondary {
+  @apply px-6 py-3 bg-panel border border-border text-ink-heading font-bold rounded-lg hover:bg-surface transition-all flex items-center justify-center gap-2;
+}

@@ -1,54 +1,26 @@
 {
   "compilerOptions": {
-    "target": "es2017",
-    "module": "nodenext",
-    "moduleResolution": "nodenext",
-    "jsx": "preserve", 
-    "strict": true,
-    "isolatedModules": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "incremental": true,
-    "tsBuildInfoFile": ".tsbuildinfo",
-    "noEmitOnError": true,
-    "resolveJsonModule": true,
-    "types": [
-      "node",
-      "react"
+    "target": "ES2022",
+    "experimentalDecorators": true,
+    "useDefineForClassFields": false,
+    "module": "ESNext",
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
     ],
-    "baseUrl": ".",
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "allowJs": true,
+    "jsx": "react-jsx",
     "paths": {
       "@/*": [
-        "./src/*"
+        "./*"
       ]
     },
     "allowImportingTsExtensions": true,
-    "ignoreDeprecations": "5.0",
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
-    ] // ✅ Includes DOM types
-    ,
-    "allowJs": true,
-    "noEmit": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ]
-  },
-  "include": [
-    "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    ".next/types/**/*.ts", // ✅ Next.js type generation
-    ".next/dev/types/**/*.ts"
-  ],
-  "exclude": [
-    "node_modules",
-    ".next",
-    ".turbo"
-  ]
+    "noEmit": true
+  }
 }

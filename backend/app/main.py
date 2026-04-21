@@ -1,14 +1,32 @@
-from fastapi import FastAPI
+import hashlib
+import json
+from datetime import datetime, timedelta, timezone
+
+from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from app.models import CostRequest
+from sqlalchemy.orm import Session
+
+from sqlalchemy.exc import IntegrityError
+
+from app.models import CostRequest, LoginRequest, CalculateCostRequest, SignupRequest, ProfileUpdateRequest, CloudCredentialRequest, OnboardUserRequest
 from app.pricing import calculate_cost
 from app.ai import get_ai_recommendation
+from app.aws_pricing import calculate_aws_cost
+from app.azure_pricing import calculate_azure_cost
+from app.gcp_pricing import calculate_gcp_cost
+from app.database import engine, get_db, Base
+from app.db_models import CostCalculation, QueryCache, User, UserCloudCredential
+from app.auth import create_access_token, get_current_user, pwd_context
+from app.crypto import encrypt_credential
+
+# Create tables on startup
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*", "http://localhost:3000"],
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -18,6 +36,187 @@ api_router = FastAPI()
 @api_router.get("/health")
 def health():
     return {"status": "ok"}
+
+@api_router.post("/login")
+def login(req: LoginRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.username == req.username).first()
+    if not user or not pwd_context.verify(req.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    token = create_access_token(user.id, user.role)
+    return {"token": token}
+
+
+@api_router.post("/signup")
+def signup(req: SignupRequest, db: Session = Depends(get_db)):
+    existing = db.query(User).filter(
+        (User.username == req.username) | (User.email == req.email)
+    ).first()
+    if existing:
+        raise HTTPException(status_code=409, detail="Username or email already exists")
+    hashed = pwd_context.hash(req.password)
+    user = User(
+        username=req.username,
+        password_hash=hashed,
+        name=req.name,
+        email=req.email,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    token = create_access_token(user.id, user.role)
+    return {"token": token}
+
+@api_router.put("/user/profile")
+def update_profile(
+    req: ProfileUpdateRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    user = db.query(User).filter(User.id == current_user["user_id"]).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.name = req.name
+    user.company = req.company
+    user.email = req.email
+    user.bio = req.bio
+
+    try:
+        db.commit()
+        db.refresh(user)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Email already in use")
+
+    return {
+        "username": user.username,
+        "name": user.name,
+        "email": user.email,
+        "company": user.company,
+        "bio": user.bio,
+        "role": user.role,
+    }
+
+
+@api_router.get("/user/profile")
+def get_profile(
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    user = db.query(User).filter(User.id == current_user["user_id"]).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return {
+        "username": user.username,
+        "name": user.name,
+        "email": user.email,
+        "company": user.company,
+        "bio": user.bio,
+        "role": user.role,
+    }
+
+
+SUPPORTED_CLOUD_PROVIDERS = {"aws", "azure", "gcp"}
+
+
+@api_router.post("/admin/onboard-user")
+def onboard_user(
+    req: OnboardUserRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    if req.role not in ("user", "admin"):
+        raise HTTPException(status_code=400, detail="Role must be 'user' or 'admin'")
+
+    existing = db.query(User).filter(
+        (User.username == req.username) | (User.email == req.email)
+    ).first()
+    if existing:
+        raise HTTPException(status_code=409, detail="Username or email already exists")
+
+    user = User(
+        username=req.username,
+        password_hash=pwd_context.hash(req.password),
+        name=req.name,
+        email=req.email,
+        role=req.role,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    return {
+        "id": user.id,
+        "username": user.username,
+        "name": user.name,
+        "email": user.email,
+        "role": user.role,
+    }
+
+
+@api_router.get("/admin/users")
+def list_users(
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    users = db.query(User).all()
+    return [
+        {
+            "id": u.id,
+            "username": u.username,
+            "name": u.name,
+            "email": u.email,
+            "role": u.role,
+        }
+        for u in users
+    ]
+
+
+@api_router.post("/user/connect-cloud")
+def connect_cloud(
+    req: CloudCredentialRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if req.cloud_provider not in SUPPORTED_CLOUD_PROVIDERS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported cloud provider: {req.cloud_provider}. Supported: aws, azure, gcp",
+        )
+
+    # Encrypt credentials as a JSON string
+    credentials_json = json.dumps({
+        "access_key_id": req.access_key_id,
+        "secret_access_key": req.secret_access_key,
+    })
+    encrypted = encrypt_credential(credentials_json)
+
+    # Upsert: check if credential already exists for this user/provider
+    existing = db.query(UserCloudCredential).filter(
+        UserCloudCredential.user_id == current_user["user_id"],
+        UserCloudCredential.cloud_provider == req.cloud_provider,
+    ).first()
+
+    if existing:
+        existing.encrypted_key = encrypted
+    else:
+        credential = UserCloudCredential(
+            user_id=current_user["user_id"],
+            cloud_provider=req.cloud_provider,
+            encrypted_key=encrypted,
+        )
+        db.add(credential)
+
+    db.commit()
+    return {"status": "connected", "cloud_provider": req.cloud_provider}
+
 
 @api_router.post("/estimate")
 def estimate(req: CostRequest):
@@ -29,6 +228,113 @@ def estimate(req: CostRequest):
     recommendation = get_ai_recommendation(costs)
 
     return {"costs": costs, "recommendation": recommendation}
+
+@api_router.post("/calculate-cost")
+def calculate_cost_endpoint(req: CalculateCostRequest, db: Session = Depends(get_db)):
+    if req.cloud_provider not in SUPPORTED_CLOUD_PROVIDERS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported cloud provider: {req.cloud_provider}. Supported: aws, azure, gcp",
+        )
+
+    # Build cache key from request (include cloud_provider)
+    cache_key_data = json.dumps(
+        {"cloud_provider": req.cloud_provider, "service": req.service, "parameters": req.parameters},
+        sort_keys=True,
+    )
+    query_hash = hashlib.sha256(cache_key_data.encode()).hexdigest()
+
+    # Check cache
+    now = datetime.now(timezone.utc)
+    cached = db.query(QueryCache).filter(QueryCache.query_hash == query_hash).first()
+    if cached and cached.expires_at.replace(tzinfo=timezone.utc) > now:
+        result = cached.result
+        result["cache_hit"] = True
+        return result
+
+    # Route to the correct provider pricing module
+    provider_calculators = {
+        "aws": calculate_aws_cost,
+        "azure": calculate_azure_cost,
+        "gcp": calculate_gcp_cost,
+    }
+    calculate_fn = provider_calculators[req.cloud_provider]
+    result = calculate_fn(req.service, req.parameters, db)
+
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+
+    result["cache_hit"] = False
+
+    # Store in cache (TTL = 24h)
+    if cached:
+        cached.result = result
+        cached.expires_at = now + timedelta(hours=24)
+    else:
+        db.add(QueryCache(
+            query_hash=query_hash,
+            result=result,
+            expires_at=now + timedelta(hours=24)
+        ))
+
+    # Store calculation history
+    db.add(CostCalculation(
+        service=req.service,
+        parameters=req.parameters,
+        result=result
+    ))
+
+    db.commit()
+    return result
+
+@api_router.get("/stats")
+def stats():
+    return {
+        "monthlySpend": 142850.20,
+        "potentialSavings": 28400.00,
+        "efficiencyScore": 92,
+        "spendTrend": "+ 4.2% vs last month",
+        "savingsTrend": "↓ 12 identified risks"
+    }
+
+@api_router.get("/recommendations")
+def recommendations():
+    return [
+        {
+            "id": 1,
+            "title": "Resize r5.large Instances",
+            "region": "us-east-1",
+            "savings": "$12,400/yr",
+            "status": "Critical",
+            "tag": "tag-blue",
+            "desc": "Avg CPU utilization under 5% for the last 30 days. Recommend downsizing to t3.medium."
+        },
+        {
+            "id": 2,
+            "title": "Active S3 Lifecycle Policy",
+            "region": "Global",
+            "savings": "$4,200/yr",
+            "status": "Medium",
+            "tag": "tag-amber",
+            "desc": "Move 4.2TB of standard storage to Intelligent-Tiering to auto-optimize access costs."
+        },
+        {
+            "id": 3,
+            "title": "Cleanup EBS Volumes",
+            "region": "us-west-2",
+            "savings": "$850/yr",
+            "status": "Low",
+            "tag": "tag-green",
+            "desc": "12 unattached volumes identified in development account that haven't been touched in 60 days."
+        }
+    ]
+
+@api_router.get("/history")
+def history():
+    return {
+        "months": ["Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug"],
+        "values": [40, 45, 42, 55, 60, 75, 70, 68, 62, 58, 50, 48]
+    }
 
 app.mount("/api", api_router)
 app.mount("/", api_router)
