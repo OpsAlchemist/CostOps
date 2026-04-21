@@ -6,9 +6,13 @@ import boto3
 import watchtower
 
 LOG_GROUP = os.getenv("CLOUDWATCH_LOG_GROUP", "CostOpsTest")
-LOG_STREAM = os.getenv("CLOUDWATCH_LOG_STREAM", "app")
 AWS_REGION = os.getenv("DB_REGION", "us-east-1")
 ENABLE_CLOUDWATCH = os.getenv("ENABLE_CLOUDWATCH", "true").lower() == "true"
+
+# Determine environment from branch name
+BRANCH = os.getenv("VERCEL_GIT_COMMIT_REF", os.getenv("GIT_BRANCH", "local"))
+ENV_LABEL = "production" if BRANCH == "main" else f"dev-{BRANCH}" if BRANCH != "local" else "local"
+LOG_STREAM = os.getenv("CLOUDWATCH_LOG_STREAM", ENV_LABEL)
 
 
 def setup_logging():
@@ -19,7 +23,7 @@ def setup_logging():
     # Always log to stdout
     stdout_handler = logging.StreamHandler()
     stdout_handler.setFormatter(logging.Formatter(
-        "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+        f"%(asctime)s [{ENV_LABEL}] [%(levelname)s] %(name)s: %(message)s"
     ))
     logger.addHandler(stdout_handler)
 
@@ -40,7 +44,7 @@ def setup_logging():
                 create_log_stream=True,
             )
             cw_handler.setFormatter(logging.Formatter(
-                "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+                f"%(asctime)s [{ENV_LABEL}] [%(levelname)s] %(name)s: %(message)s"
             ))
             logger.addHandler(cw_handler)
             logger.info("CloudWatch logging enabled — group: %s, stream: %s", LOG_GROUP, LOG_STREAM)

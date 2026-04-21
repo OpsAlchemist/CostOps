@@ -1,46 +1,63 @@
 import os
+import logging
+import boto3
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, declarative_base
+
+logger = logging.getLogger(__name__)
 
 DB_HOST = os.getenv("DB_HOST", "localhost")
 DB_PORT = os.getenv("DB_PORT", "5432")
 DB_NAME = os.getenv("DB_NAME", "postgres")
 DB_USER = os.getenv("DB_USER", "postgres")
-DB_PASSWORD = os.getenv("DB_PASSWORD", "")
 DB_REGION = os.getenv("DB_REGION", "us-east-1")
-DB_SSL = os.getenv("DB_SSL", "false").lower() == "true"
-DB_USE_IAM_AUTH = os.getenv("DB_USE_IAM_AUTH", "false").lower() == "true"
+DB_USE_IAM_AUTH = os.getenv("DB_USE_IAM_AUTH", "true").lower() == "true"
 
-# Priority: DATABASE_URL > IAM auth > password auth
-DATABASE_URL = os.getenv("DATABASE_URL")
 
-if DATABASE_URL:
-    # Full connection string provided (e.g., Vercel, Heroku)
-    engine = create_engine(DATABASE_URL, pool_pre_ping=True, pool_recycle=300)
+def _get_iam_token():
+    """Generate a fresh RDS IAM auth token."""
+    client = boto3.client(
+        "rds",
+        region_name=DB_REGION,
+        aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+        aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
+    )
+    token = client.generate_db_auth_token(
+        DBHostname=DB_HOST,
+        Port=int(DB_PORT),
+        DBUsername=DB_USER,
+        Region=DB_REGION,
+    )
+    return token
 
-elif DB_USE_IAM_AUTH:
-    # RDS IAM auth (for ECS/EC2 with AWS credentials available)
-    import boto3
 
-    def _get_iam_token():
-        client = boto3.client("rds", region_name=DB_REGION)
-        return client.generate_db_auth_token(
-            DBHostname=DB_HOST, Port=int(DB_PORT),
-            DBUsername=DB_USER, Region=DB_REGION,
-        )
-
-    url = f"postgresql://{DB_USER}:placeholder@{DB_HOST}:{DB_PORT}/{DB_NAME}?sslmode=require"
-    engine = create_engine(url, pool_pre_ping=True, pool_recycle=600)
+if DB_USE_IAM_AUTH:
+    # RDS IAM auth — token injected per connection via do_connect event
+    # Use connect_args for SSL instead of query string to avoid psycopg2 issues
+    engine = create_engine(
+        f"postgresql://{DB_USER}@{DB_HOST}:{DB_PORT}/{DB_NAME}",
+        connect_args={"sslmode": "require"},
+        pool_pre_ping=True,
+        pool_recycle=600,
+        pool_size=3,
+        max_overflow=5,
+    )
 
     @event.listens_for(engine, "do_connect")
     def provide_token(dialect, conn_rec, cargs, cparams):
-        cparams["password"] = _get_iam_token()
+        """Inject a fresh IAM auth token before each new DB connection."""
+        token = _get_iam_token()
+        cparams["password"] = token
+        logger.info("IAM auth token generated for RDS connection")
 
 else:
-    # Standard password auth (local dev, or RDS with password)
-    ssl = "?sslmode=require" if DB_SSL else ""
-    url = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}{ssl}"
-    engine = create_engine(url, pool_pre_ping=True, pool_recycle=300)
+    # Local dev — password-based auth
+    DB_PASSWORD = os.getenv("DB_PASSWORD", "pass")
+    engine = create_engine(
+        f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}",
+        pool_pre_ping=True,
+        pool_recycle=300,
+    )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
