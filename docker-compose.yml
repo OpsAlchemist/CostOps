@@ -28,6 +28,7 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - FERNET_KEY=${FERNET_KEY}
       - PRICING_SOURCE=${PRICING_SOURCE:-ai}
+      - DB_USE_IAM_AUTH=${DB_USE_IAM_AUTH:-false}
 
   frontend:
     build:
