@@ -1,6 +1,7 @@
 import hashlib
 import json
 import logging
+import os
 import time
 from datetime import datetime, timedelta, timezone
 
@@ -18,7 +19,7 @@ from app.ai import get_ai_recommendation
 from app.aws_pricing import calculate_aws_cost
 from app.azure_pricing import calculate_azure_cost
 from app.gcp_pricing import calculate_gcp_cost
-from app.database import engine, get_db, Base
+from app.database import engine, get_db, Base, DB_HOST
 from app.db_models import CostCalculation, QueryCache, User, UserCloudCredential
 from app.auth import create_access_token, get_current_user, pwd_context
 from app.crypto import encrypt_credential
@@ -28,8 +29,11 @@ logger = setup_logging()
 
 # Create tables on startup (with error handling for serverless cold starts)
 try:
-    Base.metadata.create_all(bind=engine)
-    logger.info("Database tables verified/created successfully")
+    if engine is not None:
+        Base.metadata.create_all(bind=engine)
+        logger.info("Database tables verified/created successfully")
+    else:
+        logger.warning("Database engine not available — skipping table creation")
 except Exception as e:
     logger.error("Could not create tables on startup: %s", e)
 
@@ -64,13 +68,24 @@ def health(db: Session = Depends(get_db)):
         db_status = "connected"
     except Exception as e:
         db_status = f"error: {str(e)}"
-    return {"status": "ok", "database": db_status}
+    return {
+        "status": "ok",
+        "database": db_status,
+        "db_host": DB_HOST,
+        "db_iam_auth": os.getenv("DB_USE_IAM_AUTH", "not set"),
+        "aws_key_set": bool(os.getenv("AWS_ACCESS_KEY_ID")),
+        "ai_provider": os.getenv("AI_PROVIDER", "not set"),
+    }
 
 @api_router.post("/login")
 def login(req: LoginRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(
-        (User.username == req.username) | (User.email == req.username)
-    ).first()
+    try:
+        user = db.query(User).filter(
+            (User.username == req.username) | (User.email == req.username)
+        ).first()
+    except Exception as e:
+        logger.error("Login DB error: %s", e)
+        raise HTTPException(status_code=503, detail="Database unavailable")
     if not user or not pwd_context.verify(req.password, user.password_hash):
         logger.warning("Failed login attempt for: %s", req.username)
         raise HTTPException(status_code=401, detail="Invalid credentials")
