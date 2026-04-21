@@ -1,14 +1,17 @@
 import hashlib
 import json
+import logging
+import time
 from datetime import datetime, timedelta, timezone
 
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import text
 
+from app.logging_config import setup_logging
 from app.models import CostRequest, LoginRequest, CalculateCostRequest, SignupRequest, ProfileUpdateRequest, CloudCredentialRequest, OnboardUserRequest
 from app.pricing import calculate_cost
 from app.ai import get_ai_recommendation
@@ -20,11 +23,15 @@ from app.db_models import CostCalculation, QueryCache, User, UserCloudCredential
 from app.auth import create_access_token, get_current_user, pwd_context
 from app.crypto import encrypt_credential
 
+# Setup CloudWatch + stdout logging
+logger = setup_logging()
+
 # Create tables on startup (with error handling for serverless cold starts)
 try:
     Base.metadata.create_all(bind=engine)
+    logger.info("Database tables verified/created successfully")
 except Exception as e:
-    print(f"Warning: Could not create tables on startup: {e}")
+    logger.error("Could not create tables on startup: %s", e)
 
 app = FastAPI()
 
@@ -34,6 +41,19 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start = time.time()
+    response = await call_next(request)
+    duration = round((time.time() - start) * 1000, 1)
+    logger.info(
+        "%s %s → %s (%sms)",
+        request.method, request.url.path, response.status_code, duration,
+    )
+    return response
+
 
 api_router = FastAPI()
 
@@ -52,8 +72,10 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
         (User.username == req.username) | (User.email == req.username)
     ).first()
     if not user or not pwd_context.verify(req.password, user.password_hash):
+        logger.warning("Failed login attempt for: %s", req.username)
         raise HTTPException(status_code=401, detail="Invalid credentials")
     token = create_access_token(user.id, user.role)
+    logger.info("User logged in: %s (id=%s)", user.username, user.id)
     return {"token": token}
 
 
@@ -75,6 +97,7 @@ def signup(req: SignupRequest, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(user)
     token = create_access_token(user.id, user.role)
+    logger.info("New user signed up: %s (id=%s)", user.username, user.id)
     return {"token": token}
 
 @api_router.put("/user/profile")
@@ -303,6 +326,7 @@ def calculate_cost_endpoint(req: CalculateCostRequest, db: Session = Depends(get
         raise
     except Exception as e:
         db.rollback()
+        logger.error("Cost calculation failed: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Calculation failed: {str(e)}")
 
 @api_router.get("/stats")
