@@ -16,7 +16,7 @@ if not DATABASE_URL:
     ssl_suffix = "?sslmode=require" if DB_SSL else ""
     DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}{ssl_suffix}"
 
-engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+engine = create_engine(DATABASE_URL, pool_pre_ping=True, pool_recycle=300, pool_size=5, max_overflow=10)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 

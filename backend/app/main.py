@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import text
 
 from app.models import CostRequest, LoginRequest, CalculateCostRequest, SignupRequest, ProfileUpdateRequest, CloudCredentialRequest, OnboardUserRequest
 from app.pricing import calculate_cost
@@ -19,8 +20,11 @@ from app.db_models import CostCalculation, QueryCache, User, UserCloudCredential
 from app.auth import create_access_token, get_current_user, pwd_context
 from app.crypto import encrypt_credential
 
-# Create tables on startup
-Base.metadata.create_all(bind=engine)
+# Create tables on startup (with error handling for serverless cold starts)
+try:
+    Base.metadata.create_all(bind=engine)
+except Exception as e:
+    print(f"Warning: Could not create tables on startup: {e}")
 
 app = FastAPI()
 
@@ -34,8 +38,13 @@ app.add_middleware(
 api_router = FastAPI()
 
 @api_router.get("/health")
-def health():
-    return {"status": "ok"}
+def health(db: Session = Depends(get_db)):
+    try:
+        db.execute(text("SELECT 1"))
+        db_status = "connected"
+    except Exception as e:
+        db_status = f"error: {str(e)}"
+    return {"status": "ok", "database": db_status}
 
 @api_router.post("/login")
 def login(req: LoginRequest, db: Session = Depends(get_db)):
