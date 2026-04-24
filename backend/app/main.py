@@ -13,7 +13,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy import text
 
 from app.logging_config import setup_logging
-from app.models import CostRequest, LoginRequest, CalculateCostRequest, SignupRequest, ProfileUpdateRequest, CloudCredentialRequest, OnboardUserRequest
+from app.models import CostRequest, LoginRequest, CalculateCostRequest, SignupRequest, ProfileUpdateRequest, CloudCredentialRequest, OnboardUserRequest, OAuthLoginRequest
 from app.pricing import calculate_cost
 from app.ai import get_ai_recommendation
 from app.aws_pricing import calculate_aws_cost
@@ -89,7 +89,7 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
     if not user or not pwd_context.verify(req.password, user.password_hash):
         logger.warning("Failed login attempt for: %s", req.username)
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    token = create_access_token(user.id, user.role)
+    token = create_access_token(user.id, user.role, user.username)
     logger.info("User logged in: %s (id=%s)", user.username, user.id)
     return {"token": token}
 
@@ -121,9 +121,47 @@ def signup(req: SignupRequest, db: Session = Depends(get_db)):
     db.add(user)
     db.commit()
     db.refresh(user)
-    token = create_access_token(user.id, user.role)
+    token = create_access_token(user.id, user.role, user.username)
     logger.info("New user signed up: %s (id=%s, role=%s)", user.username, user.id, user.role)
     return {"token": token}
+
+
+@api_router.post("/oauth")
+def oauth_login(req: OAuthLoginRequest, db: Session = Depends(get_db)):
+    """Login or auto-signup via Google/Apple OAuth ID token."""
+    from app.oauth import verify_oauth_token
+
+    if req.provider not in ("google", "apple"):
+        raise HTTPException(status_code=400, detail="Unsupported provider. Use 'google' or 'apple'.")
+
+    user_info = verify_oauth_token(req.provider, req.id_token)
+    if not user_info or not user_info.get("email"):
+        raise HTTPException(status_code=401, detail="Invalid OAuth token")
+
+    email = user_info["email"]
+    name = user_info.get("name", email.split("@")[0])
+
+    # Find existing user by email or create new
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        role = "admin" if email in ADMIN_EMAILS else "user"
+        user = User(
+            username=email,
+            password_hash="",  # OAuth users have no password
+            name=name,
+            email=email,
+            role=role,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        logger.info("OAuth signup: %s (id=%s, role=%s, provider=%s)", email, user.id, role, req.provider)
+    else:
+        logger.info("OAuth login: %s (id=%s, provider=%s)", email, user.id, req.provider)
+
+    token = create_access_token(user.id, user.role, user.username)
+    return {"token": token}
+
 
 @api_router.put("/user/profile")
 def update_profile(

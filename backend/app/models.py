@@ -44,3 +44,8 @@ class OnboardUserRequest(BaseModel):
     name: str
     email: EmailStr
     role: str = "user"
+
+
+class OAuthLoginRequest(BaseModel):
+    provider: str  # "google" or "apple"
+    id_token: str
