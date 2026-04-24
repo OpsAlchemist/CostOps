@@ -11,6 +11,7 @@ interface AuthContextType {
   user: User | null;
   login: (username: string, password: string) => Promise<void>;
   signup: (username: string, password: string, name: string, email: string) => Promise<void>;
+  oauthLogin: (provider: 'google' | 'apple', idToken: string) => Promise<void>;
   logout: () => void;
   authFetch: (url: string, options?: RequestInit) => Promise<Response>;
 }
@@ -20,6 +21,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   login: async () => {},
   signup: async () => {},
+  oauthLogin: async () => {},
   logout: () => {},
   authFetch: async () => new Response(),
 });
@@ -135,6 +137,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(decodeToken(token));
   }, [BASE_URL]);
 
+  const oauthLogin = useCallback(async (provider: 'google' | 'apple', idToken: string) => {
+    const res = await fetch(`${BASE_URL}/oauth`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ provider, id_token: idToken }),
+    });
+
+    if (!res.ok) {
+      let msg = 'OAuth login failed';
+      try {
+        const data = await res.json();
+        msg = data.detail || data.message || msg;
+      } catch {
+        msg = `Server error (${res.status})`;
+      }
+      throw new Error(msg);
+    }
+
+    const data = await res.json();
+    const token = data.access_token || data.token;
+    if (!token) throw new Error('No token received');
+
+    localStorage.setItem('auth_token', token);
+    setUser(decodeToken(token));
+  }, [BASE_URL]);
+
   const logout = useCallback(() => {
     localStorage.removeItem('auth_token');
     setUser(null);
@@ -162,7 +190,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, login, signup, logout, authFetch }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, login, signup, oauthLogin, logout, authFetch }}>
       {children}
     </AuthContext.Provider>
   );

@@ -14,12 +14,13 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/login")
 
 
-def create_access_token(user_id: int, role: str) -> str:
-    """Create a signed JWT with user_id and role in payload. Expiry: 24h."""
+def create_access_token(user_id: int, role: str, username: str = "") -> str:
+    """Create a signed JWT with user_id, role, and username in payload. Expiry: 24h."""
     expire = datetime.now(timezone.utc) + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
     payload = {
         "sub": str(user_id),
         "role": role,
+        "username": username,
         "exp": expire,
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
